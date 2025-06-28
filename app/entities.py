@@ -1,6 +1,8 @@
 from dataclasses import dataclass, field
 from datetime import datetime
 
+AMOUNT = 250
+
 
 @dataclass
 class Subscription:
@@ -9,7 +11,7 @@ class Subscription:
     public_key: str | None = None
     is_notify: bool = False
     is_active: bool = False
-    amount: int = 200
+    amount: int = AMOUNT
     id: int | None = None
     end_date: datetime | None = None
     created_at: datetime = field(default_factory=datetime.now)
