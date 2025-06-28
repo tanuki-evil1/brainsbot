@@ -1,0 +1,28 @@
+from dataclasses import dataclass, field
+from datetime import datetime
+
+
+@dataclass
+class Subscription:
+    user_id: int
+    key: str | None = None
+    public_key: str | None = None
+    is_notify: bool = False
+    is_active: bool = False
+    amount: int = 200
+    id: int | None = None
+    end_date: datetime | None = None
+    created_at: datetime = field(default_factory=datetime.now)
+    updated_at: datetime = field(default_factory=datetime.now)
+
+
+@dataclass
+class User:
+    id: int
+    first_name: str
+    last_name: str
+    username: str
+    language_code: str
+    subscription: Subscription | None = None
+    created_at: datetime = field(default_factory=datetime.now)
+    updated_at: datetime = field(default_factory=datetime.now)
