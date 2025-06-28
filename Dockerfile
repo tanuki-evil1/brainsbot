@@ -10,7 +10,7 @@ RUN apt-get update && apt-get install cron -y \
 
 WORKDIR /app
 
-COPY pyproject.toml uv.lock .
+COPY pyproject.toml uv.lock ./
 
 RUN touch /var/log/cron.log
 RUN uv sync --frozen --no-dev
