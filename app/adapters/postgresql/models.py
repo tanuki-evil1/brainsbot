@@ -12,7 +12,7 @@ class Subscription(Base, TimestampMixin):
     user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id"), nullable=False, unique=True)
     is_notify: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     end_date: Mapped[datetime] = mapped_column(DateTime, nullable=True)
-    amount: Mapped[int] = mapped_column(Integer, nullable=False, default=200)
+    amount: Mapped[int] = mapped_column(Integer, nullable=False, default=250)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     key: Mapped[str] = mapped_column(String(500), nullable=True, default=None)
     public_key: Mapped[str] = mapped_column(String(255), nullable=True, default=None)
