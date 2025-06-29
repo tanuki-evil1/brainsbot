@@ -39,9 +39,9 @@ class StartUserUsecase:
             await self.user_repository.add_one(new_user)
             await self.subscription_repository.add_one(new_subscription)
 
-            referrer_id = message.text.split(" ", 1)[1]
-            if referrer_id.startswith("ref_"):
-                referrer_id = int(referrer_id[4:])
+            referrer_id = message.text.split(" ", 1)
+            if len(referrer_id) > 1 and referrer_id[1].startswith("ref_"):
+                referrer_id = int(referrer_id[1][4:])
                 referrer = await self.user_repository.find_one(id=referrer_id)
                 if referrer:
                     new_referral = entities.Referral(
