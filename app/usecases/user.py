@@ -4,11 +4,12 @@ from datetime import datetime, timedelta
 from aiogram import types
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.fsm.context import FSMContext
+from aiogram.filters import CommandStart
 from vi_core.sqlalchemy import UnitOfWork
 
 from app import entities, messages
 from app.settings import settings
-from app.adapters.postgresql.repositories import SubscriptionRepository, UserRepository
+from app.adapters.postgresql.repositories import ReferralRepository, SubscriptionRepository, UserRepository
 from app.adapters.wireguard.async_manager import AsyncWireGuardClientManager
 
 
@@ -20,6 +21,7 @@ class StartUserUsecase:
     user_repository: UserRepository
     uow: UnitOfWork
     subscription_repository: SubscriptionRepository
+    referral_repository: ReferralRepository
 
     async def __call__(self, message: types.Message, state: FSMContext) -> None:
         user = await self.user_repository.find_one(id=message.from_user.id)
@@ -32,10 +34,22 @@ class StartUserUsecase:
                 language_code=message.from_user.language_code or "",
             )
             new_subscription = entities.Subscription(
-                user_id=message.from_user.id,
+                user_id=new_user.id,
             )
             await self.user_repository.add_one(new_user)
             await self.subscription_repository.add_one(new_subscription)
+
+            referrer_id = message.text.split(" ", 1)[1]
+            if referrer_id.startswith("ref_"):
+                referrer_id = int(referrer_id[4:])
+                referrer = await self.user_repository.find_one(id=referrer_id)
+                if referrer:
+                    new_referral = entities.Referral(
+                        referrer_id=referrer_id,
+                        referral_id=new_user.id,
+                    )
+                    await self.referral_repository.add_one(new_referral)
+
             await self.uow.commit()
 
         keyboard = InlineKeyboardMarkup(
@@ -75,17 +89,57 @@ class AccountUsecase:
 
     async def __call__(self, callback_query: types.CallbackQuery) -> None:
         user = await self.user_repository.find_one(id=callback_query.from_user.id)
+
         message = messages.ACCOUNT_TEXT.format(
-            username=user.first_name,
+            username=callback_query.from_user.first_name,
             subscription_status=messages.StatusMessages.SUBSCRIPTION_ACTIVE
             if user.subscription.is_active
             else messages.StatusMessages.SUBSCRIPTION_INACTIVE,
-            end_date=f"{user.subscription.end_date.strftime('%d.%m.%Y')} - {(user.subscription.end_date.date() - datetime.now().date()).days} дней"
+            end_date=messages.MessageTemplates.END_DATE_FORMAT.format(
+                date=user.subscription.end_date.strftime("%d.%m.%Y"),
+                days=(user.subscription.end_date.date() - datetime.now().date()).days,
+                days_text=messages.Constants.DAYS_TEXT,
+            )
             if user.subscription.end_date
             else messages.StatusMessages.SUBSCRIPTION_NO_END_DATE,
             key=user.subscription.key if user.subscription.key else messages.StatusMessages.SUBSCRIPTION_NO_KEY,
         )
         await callback_query.message.answer(message)
+
+
+@dataclass
+class ReferralUsecase:
+    user_repository: UserRepository
+    referral_repository: ReferralRepository
+
+    async def __call__(self, callback_query: types.CallbackQuery) -> None:
+        referrals = await self.referral_repository.find_all(referrer_id=callback_query.from_user.id)
+        referral_text = ""
+        for referral in referrals:
+            if referral.referral.subscription.is_active:
+                referral_text += messages.MessageTemplates.REFERRAL_USER_FORMAT.format(
+                    first_name=referral.referral.first_name,
+                    username=referral.referral.username,
+                    separator=messages.Constants.SUBSCRIPTION_SEPARATOR,
+                    status=messages.StatusMessages.SUBSCRIPTION_ACTIVE,
+                )
+            else:
+                referral_text += messages.MessageTemplates.REFERRAL_USER_FORMAT.format(
+                    first_name=referral.referral.first_name,
+                    username=referral.referral.username,
+                    separator=messages.Constants.SUBSCRIPTION_SEPARATOR,
+                    status=messages.StatusMessages.SUBSCRIPTION_INACTIVE,
+                )
+        count_active_refferal = await self.referral_repository.count_all_active_referral(
+            referrer_id=callback_query.from_user.id
+        )
+        await callback_query.message.answer(
+            messages.REFERRAL_TEXT.format(
+                referrals=referral_text,
+                referral_link=callback_query.from_user.id,
+                discount=entities.DISCOUNT * count_active_refferal,
+            )
+        )
 
 
 @dataclass
@@ -206,6 +260,7 @@ class SendMessageCheckUsecase:
 class DonateUsecase:
     user_repository: UserRepository
     subscription_repository: SubscriptionRepository
+    referral_repository: ReferralRepository
 
     async def __call__(self, callback_query: types.CallbackQuery) -> None:
         subscription = await self.subscription_repository.find_one(user_id=callback_query.from_user.id)
@@ -219,7 +274,7 @@ class DonateUsecase:
                 [
                     InlineKeyboardButton(
                         text=messages.ButtonTexts.DONATE,
-                        url="https://www.tinkoff.ru/rm/r_ZkFAkdqUtA.OrtRNDgctR/B1KEL93183",
+                        url=messages.URLs.PAYMENT_URL,
                     )
                 ],
                 [
@@ -230,8 +285,15 @@ class DonateUsecase:
                 ],
             ]
         )
+        count_active_refferal = await self.referral_repository.count_all_active_referral(
+            referrer_id=callback_query.from_user.id
+        )
+        price = int(subscription.amount * (1 - entities.DISCOUNT * count_active_refferal / 100))
         await callback_query.message.answer(
-            messages.MessageTemplates.PAYMENT_INFO.format(amount=subscription.amount), reply_markup=builder
+            messages.MessageTemplates.PAYMENT_INFO.format(
+                amount=price,
+            ),
+            reply_markup=builder,
         )
 
 

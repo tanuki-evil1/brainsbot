@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 
 AMOUNT = 250
-
+DISCOUNT = 10
 
 @dataclass
 class Subscription:
@@ -26,5 +26,16 @@ class User:
     username: str
     language_code: str
     subscription: Subscription | None = None
+    referrals: list["Referral"] = field(default_factory=list)
     created_at: datetime = field(default_factory=datetime.now)
     updated_at: datetime = field(default_factory=datetime.now)
+
+
+@dataclass
+class Referral:
+    referrer_id: int
+    referral_id: int
+    id: int | None = None
+    created_at: datetime = field(default_factory=datetime.now)
+    updated_at: datetime = field(default_factory=datetime.now)
+    referral: User | None = None

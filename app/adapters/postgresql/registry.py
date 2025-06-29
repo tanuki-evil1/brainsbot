@@ -53,6 +53,29 @@ def subscription_to_model(subscription: entities.Subscription) -> models.Subscri
     )
 
 
+def referral_to_entity(referral: models.Referral) -> entities.Referral:
+    return entities.Referral(
+        id=referral.id,
+        referral_id=referral.referral_id,
+        referrer_id=referral.referrer_id,
+        created_at=referral.created_at,
+        updated_at=referral.updated_at,
+        referral=user_to_entity(referral.referral) if referral.referral else None,
+    )
+
+
+def referral_to_model(referral: entities.Referral) -> models.Referral:
+    return models.Referral(
+        id=referral.id if referral.id else None,
+        referral_id=referral.referral_id,
+        referrer_id=referral.referrer_id,
+        created_at=referral.created_at,
+        updated_at=referral.updated_at,
+    )
+
+
+mapper.register(models.Referral, entities.Referral, referral_to_entity, True)
+mapper.register(entities.Referral, models.Referral, referral_to_model)
 mapper.register(models.User, entities.User, user_to_entity, True)
 mapper.register(entities.User, models.User, user_to_model)
 mapper.register(models.Subscription, entities.Subscription, subscription_to_entity, True)
