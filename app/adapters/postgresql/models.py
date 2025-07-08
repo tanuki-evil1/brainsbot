@@ -18,6 +18,7 @@ class Subscription(Base, TimestampMixin):
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     key: Mapped[str] = mapped_column(String(500), nullable=True, default=None)
     public_key: Mapped[str] = mapped_column(String(255), nullable=True, default=None)
+    allowed_ip: Mapped[str] = mapped_column(String(255), nullable=True, default=None)
     # One-to-one связь
     user: Mapped["User"] = relationship("User", back_populates="subscription", uselist=False)
 

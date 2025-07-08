@@ -53,7 +53,7 @@ class StatusMessages(StrEnum):
     SUBSCRIPTION_ACTIVE = "активна"
     SUBSCRIPTION_INACTIVE = "неактивна"
     SUBSCRIPTION_NO_END_DATE = "необходима подписка"
-    SUBSCRIPTION_ALREADY_ACTIVE = "У вас уже есть активная подписка"
+    SUBSCRIPTION_ALREADY_ACTIVE = "У вас уже есть активная подписка, можете продлить ее"
     SUBSCRIPTION_NO_KEY = "необходима подписка"
 
     # Сообщения

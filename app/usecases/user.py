@@ -237,17 +237,31 @@ class SendMessageCheckUsecase:
 
         await state.clear()
 
-        async with self.wireguard_manager as manager:
-            key, public_key = await manager.add_user(str(message.from_user.id))
-
         subscription = await self.subscription_repository.find_one(user_id=message.from_user.id)
+        if not subscription.key:
+            async with self.wireguard_manager as manager:
+                user_config = await manager.create_config(username=message.from_user.id)
+        else:
+            user_config = entities.WireGuardUserConfig(
+                client_public_key=subscription.public_key,
+                access_key=subscription.key,
+                allowed_ip=subscription.allowed_ip,
+                username=message.from_user.id,
+            )
+
+        async with self.wireguard_manager as manager:
+            await manager.add_user(user_config)
+
         updated_subscription = replace(
             subscription,
-            end_date=datetime.now() + timedelta(days=DAYS_IN_MONTH),
+            end_date=datetime.now() + timedelta(days=DAYS_IN_MONTH)
+            if not subscription.end_date
+            else subscription.end_date + timedelta(days=DAYS_IN_MONTH),
             is_notify=True,
             is_active=True,
-            key=key,
-            public_key=public_key,
+            key=user_config.access_key,
+            public_key=user_config.client_public_key,
+            allowed_ip=user_config.allowed_ip,
         )
         await self.subscription_repository.edit_one(updated_subscription)
 
@@ -267,7 +281,6 @@ class DonateUsecase:
 
         if subscription.is_active:
             await callback_query.message.answer(messages.StatusMessages.SUBSCRIPTION_ALREADY_ACTIVE)
-            return
 
         builder = InlineKeyboardMarkup(
             inline_keyboard=[

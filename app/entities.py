@@ -4,6 +4,7 @@ from datetime import datetime
 AMOUNT = 250
 DISCOUNT = 10
 
+
 @dataclass
 class Subscription:
     user_id: int
@@ -14,6 +15,7 @@ class Subscription:
     amount: int = AMOUNT
     id: int | None = None
     end_date: datetime | None = None
+    allowed_ip: str | None = None
     created_at: datetime = field(default_factory=datetime.now)
     updated_at: datetime = field(default_factory=datetime.now)
 
@@ -39,3 +41,11 @@ class Referral:
     created_at: datetime = field(default_factory=datetime.now)
     updated_at: datetime = field(default_factory=datetime.now)
     referral: User | None = None
+
+
+@dataclass
+class WireGuardUserConfig:
+    client_public_key: str
+    access_key: str
+    allowed_ip: str
+    username: str

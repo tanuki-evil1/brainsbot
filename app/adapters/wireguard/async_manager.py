@@ -8,6 +8,7 @@ from app.adapters.wireguard import templates
 from datetime import datetime
 from app.settings import settings
 from io import StringIO
+from app import entities
 
 
 class AsyncWireGuardClientManager:
@@ -67,7 +68,7 @@ class AsyncWireGuardClientManager:
             # Handle bytes or other types
             return str(stdout).strip()
 
-    async def add_user(self, username: str, public_key: str | None = None) -> tuple[str, str]:
+    async def create_config(self, username: str = "Anonym") -> entities.WireGuardUserConfig:
         ips_output = await self._run_command(
             "docker exec -i amnezia-awg cat /opt/amnezia/awg/wg0.conf | grep AllowedIPs"
         )
@@ -75,38 +76,46 @@ class AsyncWireGuardClientManager:
         last_ip = ipaddress.IPv4Network(ips_output.split("AllowedIPs = ")[-1].strip(), strict=False)
         allowed_ip = f"{last_ip.network_address + 1}/{last_ip.prefixlen}"
 
-        if not public_key:
-            client_private_key = await self._run_command("docker exec -i amnezia-awg wg genkey")
-            client_public_key = await self._run_command(
-                f"docker exec -i amnezia-awg bash -c \"echo '{client_private_key}' | wg pubkey\""
-            )
-            key_config = templates.OUTPUT_TEMPLATE.format(
-                client_private_key=client_private_key,
-                preshared_key=self.preshared_key,
-                allowed_ip=allowed_ip,
-                wireguard_server_public_key=self.server_public_key,
-            )
-        else:
-            client_public_key = public_key
-
-        peer_config = templates.PEER_TEMPLATE.format(
-            client_public_key=client_public_key,
+        client_private_key = await self._run_command("docker exec -i amnezia-awg wg genkey")
+        client_public_key = await self._run_command(
+            f"docker exec -i amnezia-awg bash -c \"echo '{client_private_key}' | wg pubkey\""
+        )
+        key_config = templates.OUTPUT_TEMPLATE.format(
+            client_private_key=client_private_key,
             preshared_key=self.preshared_key,
             allowed_ip=allowed_ip,
+            wireguard_server_public_key=self.server_public_key,
+        )
+        return entities.WireGuardUserConfig(
+            client_public_key=client_public_key, access_key=key_config, allowed_ip=allowed_ip, username=username
+        )
+
+    async def add_user(self, user_config: entities.WireGuardUserConfig) -> None:
+        wg_config = await self._run_command("docker exec -i amnezia-awg cat /opt/amnezia/awg/wg0.conf")
+        config_io = StringIO(wg_config)
+        wc = wgconfig.WGConfig()
+        wc.read_from_fileobj(config_io)
+        if user_config.client_public_key in wc.get_peers():
+            return
+
+        peer_config = templates.PEER_TEMPLATE.format(
+            client_public_key=user_config.client_public_key,
+            preshared_key=self.preshared_key,
+            allowed_ip=user_config.allowed_ip,
         )
 
         client_config = templates.CLIENT_TEMPLATE.format(
-            client_public_key=client_public_key,
-            client_name=username,
+            client_public_key=user_config.client_public_key,
+            client_name=user_config.username,
             creation_date=datetime.now().strftime("%a %b %d %H:%M:%S %Y"),
         )
 
         clients_raw = await self._run_command("docker exec -i amnezia-awg cat /opt/amnezia/awg/clientsTable")
-
         clients_data = json.loads(clients_raw)
+
         new_client = json.loads(client_config)
         for client in clients_data:
-            if client.get("clientPublicKey") == new_client.get("clientPublicKey"):
+            if client.get("clientId") == new_client.get("clientId"):
                 break
         else:
             clients_data.append(new_client)
@@ -118,7 +127,6 @@ class AsyncWireGuardClientManager:
         await self._run_command(
             "docker exec -i amnezia-awg bash -c 'wg syncconf wg0 <(wg-quick strip /opt/amnezia/awg/wg0.conf)'"
         )
-        return key_config, client_public_key if not public_key else public_key
 
     async def remove_user(self, public_key: str) -> None:
         wg_config = await self._run_command("docker exec -i amnezia-awg cat /opt/amnezia/awg/wg0.conf")

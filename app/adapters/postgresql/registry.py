@@ -37,6 +37,7 @@ def subscription_to_entity(subscription: models.Subscription) -> entities.Subscr
         amount=subscription.amount,
         key=subscription.key,
         public_key=subscription.public_key,
+        allowed_ip=subscription.allowed_ip,
     )
 
 
@@ -50,6 +51,7 @@ def subscription_to_model(subscription: entities.Subscription) -> models.Subscri
         is_active=subscription.is_active,
         key=subscription.key,
         public_key=subscription.public_key,
+        allowed_ip=subscription.allowed_ip,
     )
 
 
