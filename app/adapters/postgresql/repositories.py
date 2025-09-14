@@ -53,10 +53,9 @@ class SubscriptionRepository:
     async def find_all_ips(self) -> list[str]:
         stmt = select(models.Subscription.allowed_ip).filter(
             models.Subscription.allowed_ip.is_not(None),
-            models.Subscription.allowed_ip != ""
         )
-        instances = await self.helper.all(stmt)
-        return [instance.allowed_ip for instance in instances]
+        instances: list[str] = await self.helper.all(stmt)
+        return instances
 
 
 class ReferralRepository:
