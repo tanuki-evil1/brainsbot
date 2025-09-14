@@ -239,8 +239,9 @@ class SendMessageCheckUsecase:
 
         subscription = await self.subscription_repository.find_one(user_id=message.from_user.id)
         if not subscription.key:
+            ips = await self.subscription_repository.find_all_ips()
             async with self.wireguard_manager as manager:
-                user_config = await manager.create_config(username=message.from_user.id)
+                user_config = await manager.create_config(username=message.from_user.id, ips=ips)
         else:
             user_config = entities.WireGuardUserConfig(
                 client_public_key=subscription.public_key,

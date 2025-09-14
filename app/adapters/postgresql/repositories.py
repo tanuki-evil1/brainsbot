@@ -50,6 +50,14 @@ class SubscriptionRepository:
     async def edit_one(self, subscription: entities.Subscription) -> None:
         await self.helper.update(mapper.map(subscription, models.Subscription))
 
+    async def find_all_ips(self) -> list[str]:
+        stmt = select(models.Subscription.allowed_ip).filter(
+            models.Subscription.allowed_ip.is_not(None),
+            models.Subscription.allowed_ip != ""
+        )
+        instances = await self.helper.all(stmt)
+        return [instance.allowed_ip for instance in instances]
+
 
 class ReferralRepository:
     def __init__(self, session: AsyncSession):
