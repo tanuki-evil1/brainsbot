@@ -64,4 +64,4 @@ init_typed = true
 warn_required_dynamic_aliases = true
 
 [tool.uv.sources]
-vi-core = { git = "git+https://gitlab+deploy-token-2:gldt-FnyXszLXsATLZaHzmNa9@git.vashinvestor.ru/razvitie/microservices/vi-core.git" }
+vi-core = { git = "https://gitlab+deploy-token-5:gldt-sA7xx5gSpUyr2WxPdy8f@git.vashinvestor.ru/razvitie/microservices/vi-core.git" }
