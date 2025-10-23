@@ -332,7 +332,7 @@ class SupporMessagetUsecase:
         username = message.from_user.username or str(message.from_user.id)
         text = message.text or message.caption or messages.Constants.NO_TEXT_PLACEHOLDER
 
-        support_message = messages.MessageTemplates.SUPPORT_MESSAGE.format(username=username, text=text)
+        support_message = messages.MessageTemplates.SUPPORT_MESSAGE.format(user_id=message.from_user.id, username=username, text=text)
 
         if message.photo:
             photo = message.photo[-1]

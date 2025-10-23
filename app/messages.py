@@ -88,7 +88,7 @@ class ActionRequiredMessages(StrEnum):
 
 # Enum для шаблонов сообщений
 class MessageTemplates(StrEnum):
-    SUPPORT_MESSAGE = "🆘 Поддержка\nОт: @{username}\n\nСообщение:\n{text}"
+    SUPPORT_MESSAGE = "🆘 Поддержка\nId: {user_id} \nUsername: @{username}\n\nСообщение:\n{text}"
     CHECK_INFO = "💸 *Проверка чека:* \nОт: @{username}\n\nСообщение:\n{text}"
     PAYMENT_INFO = """💰 *Оплатить:*
 
