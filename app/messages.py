@@ -42,6 +42,21 @@ INSTRUCTIONS_TEXT = """📋 *Инструкции по использовани�
 
 SUBSCRIPTION_EXPIRED_MESSAGE = "🔔 Время оплатить подписку\\!"
 
+# Сообщения для рассылки
+BROADCAST_REQUEST_MESSAGE = """📢 *Массовая рассылка*
+
+Отправьте сообщение, которое будет разослано всем пользователям бота\\."""
+
+BROADCAST_CONFIRMATION_MESSAGE = """📢 *Подтверждение рассылки*
+
+Сообщение будет отправлено **{count}** пользователям\\.
+
+Вы уверены\\?"""
+
+BROADCAST_SUCCESS_MESSAGE = "✅ Рассылка завершена\\! Отправлено сообщений: **{sent}** из **{total}**"
+
+BROADCAST_CANCELLED_MESSAGE = "❌ Рассылка отменена"
+
 
 # Enum для статусных сообщений
 class StatusMessages(StrEnum):
@@ -104,6 +119,10 @@ class ButtonTexts(StrEnum):
     # Действия
     SEND_CHECK = "💸 Отправить чек"
     DISABLE_NOTIFICATIONS = "❌ Отключить уведомления"
+
+    # Рассылка
+    BROADCAST_CONFIRM = "✅ Подтвердить"
+    BROADCAST_CANCEL = "❌ Отменить"
 
 
 # Enum для инструкций
@@ -168,12 +187,15 @@ class CallbackData(StrEnum):
     INSTRUCTION_REFERRAL = "instruction_referral"
     INSTRUCTION_EXCLUDE = "instruction_exclude"
     INSTRUCTION_UPDATE = "instruction_update"
+    BROADCAST_CONFIRM = "broadcast_confirm"
+    BROADCAST_CANCEL = "broadcast_cancel"
 
 
 # Состояния FSM
 class FSMStates(StrEnum):
     WAITING_FOR_SUPPORT_MESSAGE = "waiting_for_support_message"
     WAITING_FOR_CHECK_MESSAGE = "waiting_for_check_message"
+    WAITING_FOR_BROADCAST_MESSAGE = "waiting_for_broadcast_message"
 
 
 # Константы

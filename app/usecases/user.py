@@ -2,16 +2,14 @@ from dataclasses import dataclass, replace
 from datetime import datetime, timedelta
 
 from aiogram import types
-from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.fsm.context import FSMContext
-from aiogram.filters import CommandStart
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from vi_core.sqlalchemy import UnitOfWork
 
 from app import entities, messages
-from app.settings import settings
 from app.adapters.postgresql.repositories import ReferralRepository, SubscriptionRepository, UserRepository
 from app.adapters.wireguard.async_manager import AsyncWireGuardClientManager
-
+from app.settings import settings
 
 DAYS_IN_MONTH = 30
 
@@ -362,3 +360,138 @@ class InstructionSpeedUsecase:
     async def __call__(self, callback_query: types.CallbackQuery) -> None:
         await callback_query.message.answer(messages.InstructionTexts.SPEED)
         await callback_query.message.answer_document(types.FSInputFile("amnezia_sites.json"))
+
+
+@dataclass
+class BroadcastUsecase:
+    user_repository: UserRepository
+
+    async def __call__(self, message: types.Message, state: FSMContext) -> None:
+        # Проверяем права администратора
+        if message.from_user.id != settings.admin_id:
+            return
+
+        await message.answer(messages.BROADCAST_REQUEST_MESSAGE)
+        await state.set_state(messages.FSMStates.WAITING_FOR_BROADCAST_MESSAGE)
+
+
+@dataclass
+class BroadcastMessageUsecase:
+    user_repository: UserRepository
+
+    async def __call__(self, message: types.Message, state: FSMContext) -> None:
+        # Получаем всех пользователей
+        users = await self.user_repository.find_all()
+        user_count = len(users)
+
+        # Сохраняем сообщение в состоянии
+        await state.update_data(broadcast_message=message)
+
+        # Создаем клавиатуру подтверждения
+        keyboard = InlineKeyboardMarkup(
+            inline_keyboard=[
+                [
+                    InlineKeyboardButton(
+                        text=messages.ButtonTexts.BROADCAST_CONFIRM,
+                        callback_data=messages.CallbackData.BROADCAST_CONFIRM,
+                    ),
+                    InlineKeyboardButton(
+                        text=messages.ButtonTexts.BROADCAST_CANCEL,
+                        callback_data=messages.CallbackData.BROADCAST_CANCEL,
+                    ),
+                ]
+            ]
+        )
+
+        await message.answer(
+            messages.BROADCAST_CONFIRMATION_MESSAGE.format(count=user_count),
+            reply_markup=keyboard,
+        )
+
+
+@dataclass
+class BroadcastConfirmUsecase:
+    user_repository: UserRepository
+
+    async def __call__(self, callback_query: types.CallbackQuery, state: FSMContext) -> None:
+        # Получаем сохраненное сообщение
+        data = await state.get_data()
+        broadcast_message: types.Message = data.get("broadcast_message")
+
+        if not broadcast_message:
+            await callback_query.message.answer("Ошибка: сообщение для рассылки не найдено")
+            await state.clear()
+            return
+
+        # Получаем всех пользователей
+        users = await self.user_repository.find_all()
+        total_users = len(users)
+        sent_count = 0
+
+        # Отправляем сообщение всем пользователям
+        for user in users:
+            try:
+                if broadcast_message.text:
+                    await callback_query.bot.send_message(
+                        chat_id=user.id,
+                        text=broadcast_message.text,
+                        entities=broadcast_message.entities,
+                    )
+                elif broadcast_message.photo:
+                    await callback_query.bot.send_photo(
+                        chat_id=user.id,
+                        photo=broadcast_message.photo[-1].file_id,
+                        caption=broadcast_message.caption,
+                        caption_entities=broadcast_message.caption_entities,
+                    )
+                elif broadcast_message.document:
+                    await callback_query.bot.send_document(
+                        chat_id=user.id,
+                        document=broadcast_message.document.file_id,
+                        caption=broadcast_message.caption,
+                        caption_entities=broadcast_message.caption_entities,
+                    )
+                elif broadcast_message.video:
+                    await callback_query.bot.send_video(
+                        chat_id=user.id,
+                        video=broadcast_message.video.file_id,
+                        caption=broadcast_message.caption,
+                        caption_entities=broadcast_message.caption_entities,
+                    )
+                elif broadcast_message.audio:
+                    await callback_query.bot.send_audio(
+                        chat_id=user.id,
+                        audio=broadcast_message.audio.file_id,
+                        caption=broadcast_message.caption,
+                        caption_entities=broadcast_message.caption_entities,
+                    )
+                elif broadcast_message.voice:
+                    await callback_query.bot.send_voice(
+                        chat_id=user.id,
+                        voice=broadcast_message.voice.file_id,
+                        caption=broadcast_message.caption,
+                        caption_entities=broadcast_message.caption_entities,
+                    )
+                elif broadcast_message.sticker:
+                    await callback_query.bot.send_sticker(
+                        chat_id=user.id,
+                        sticker=broadcast_message.sticker.file_id,
+                    )
+
+                sent_count += 1
+            except Exception as e:
+                # Логируем ошибку, но продолжаем рассылку
+                print(f"Ошибка отправки сообщения пользователю {user.id}: {e}")
+
+        # Отправляем отчет о рассылке
+        await callback_query.message.answer(
+            messages.BROADCAST_SUCCESS_MESSAGE.format(sent=sent_count, total=total_users)
+        )
+        await state.clear()
+
+
+@dataclass
+class BroadcastCancelUsecase:
+    async def __call__(self, callback_query: types.CallbackQuery, state: FSMContext) -> None:
+        await callback_query.message.answer(messages.BROADCAST_CANCELLED_MESSAGE)
+        await state.clear()

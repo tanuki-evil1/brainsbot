@@ -1,14 +1,14 @@
-from aiogram import Router, types, F
-from aiogram.filters import CommandStart, StateFilter
+from aiogram import Router, types
+from aiogram.filters import Command, CommandStart, StateFilter
 from aiogram.fsm.context import FSMContext
-from app.adapters.wireguard.async_manager import AsyncWireGuardClientManager
-from app.settings import settings
 from vi_core.sqlalchemy import UnitOfWork
 
-from app.adapters.postgresql.repositories import ReferralRepository, SubscriptionRepository, UserRepository
-from app.handlers.telegram.deps import get_database
-from app.usecases import user
 from app import messages
+from app.adapters.postgresql.repositories import ReferralRepository, SubscriptionRepository, UserRepository
+from app.adapters.wireguard.async_manager import AsyncWireGuardClientManager
+from app.handlers.telegram.deps import get_database
+from app.settings import settings
+from app.usecases import user
 
 router = Router()
 
@@ -29,6 +29,16 @@ async def command_start_handler(message: types.Message, state: FSMContext) -> No
             referral_repository=referral_repository,
         )
         await start_user_usecase(message, state)
+
+
+@router.message(Command("broadcast"))
+async def command_broadcast_handler(message: types.Message, state: FSMContext) -> None:
+    database = get_database()
+    async with database.session() as session:
+        user_repository = UserRepository(session=session)
+
+        broadcast_usecase = user.BroadcastUsecase(user_repository=user_repository)
+        await broadcast_usecase(message, state)
 
 
 @router.callback_query(lambda message: message.data == messages.CallbackData.ACCOUNT)
@@ -157,3 +167,29 @@ async def forward_check_to_admin(message: types.Message, state: FSMContext) -> N
 async def forward_to_admin(message: types.Message, state: FSMContext) -> None:
     support_usecase = user.SupporMessagetUsecase()
     await support_usecase(message, state)
+
+
+@router.message(StateFilter(messages.FSMStates.WAITING_FOR_BROADCAST_MESSAGE))
+async def process_broadcast_message(message: types.Message, state: FSMContext) -> None:
+    database = get_database()
+    async with database.session() as session:
+        user_repository = UserRepository(session=session)
+
+        broadcast_message_usecase = user.BroadcastMessageUsecase(user_repository=user_repository)
+        await broadcast_message_usecase(message, state)
+
+
+@router.callback_query(lambda callback: callback.data == messages.CallbackData.BROADCAST_CONFIRM)
+async def process_broadcast_confirm(callback_query: types.CallbackQuery, state: FSMContext) -> None:
+    database = get_database()
+    async with database.session() as session:
+        user_repository = UserRepository(session=session)
+
+        broadcast_confirm_usecase = user.BroadcastConfirmUsecase(user_repository=user_repository)
+        await broadcast_confirm_usecase(callback_query, state)
+
+
+@router.callback_query(lambda callback: callback.data == messages.CallbackData.BROADCAST_CANCEL)
+async def process_broadcast_cancel(callback_query: types.CallbackQuery, state: FSMContext) -> None:
+    broadcast_cancel_usecase = user.BroadcastCancelUsecase()
+    await broadcast_cancel_usecase(callback_query, state)

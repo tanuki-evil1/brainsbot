@@ -26,6 +26,11 @@ class UserRepository:
         instance = await self.helper.one(stmt)
         return mapper.map(instance, entities.User) if instance else None
 
+    async def find_all(self) -> list[entities.User]:
+        stmt = select(models.User).options(selectinload(models.User.subscription))
+        instances = await self.helper.all(stmt)
+        return [mapper.map(instance, entities.User) for instance in instances]
+
 
 class SubscriptionRepository:
     def __init__(self, session: AsyncSession):
@@ -54,8 +59,8 @@ class SubscriptionRepository:
         stmt = select(models.Subscription.allowed_ip).filter(
             models.Subscription.allowed_ip.is_not(None),
         )
-        instances: list[str] = await self.helper.all(stmt)
-        return instances
+        instances = await self.helper.all(stmt)
+        return [ip for ip in instances if ip is not None]
 
 
 class ReferralRepository:
