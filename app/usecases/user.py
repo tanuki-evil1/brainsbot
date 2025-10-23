@@ -403,9 +403,11 @@ class BroadcastMessageUsecase:
             ]
         )
 
+        # Отправляем подтверждение без markdown парсинга
         await message.answer(
             messages.BROADCAST_CONFIRMATION_MESSAGE.format(count=user_count),
             reply_markup=keyboard,
+            parse_mode=None,
         )
 
 
@@ -436,6 +438,7 @@ class BroadcastConfirmUsecase:
                         chat_id=user.id,
                         text=broadcast_message.text,
                         entities=broadcast_message.entities,
+                        parse_mode=None,
                     )
                 elif broadcast_message.photo:
                     await callback_query.bot.send_photo(
@@ -443,6 +446,7 @@ class BroadcastConfirmUsecase:
                         photo=broadcast_message.photo[-1].file_id,
                         caption=broadcast_message.caption,
                         caption_entities=broadcast_message.caption_entities,
+                        parse_mode=None,
                     )
                 elif broadcast_message.document:
                     await callback_query.bot.send_document(
@@ -450,6 +454,7 @@ class BroadcastConfirmUsecase:
                         document=broadcast_message.document.file_id,
                         caption=broadcast_message.caption,
                         caption_entities=broadcast_message.caption_entities,
+                        parse_mode=None,
                     )
                 elif broadcast_message.video:
                     await callback_query.bot.send_video(
@@ -457,6 +462,7 @@ class BroadcastConfirmUsecase:
                         video=broadcast_message.video.file_id,
                         caption=broadcast_message.caption,
                         caption_entities=broadcast_message.caption_entities,
+                        parse_mode=None,
                     )
                 elif broadcast_message.audio:
                     await callback_query.bot.send_audio(
@@ -464,6 +470,7 @@ class BroadcastConfirmUsecase:
                         audio=broadcast_message.audio.file_id,
                         caption=broadcast_message.caption,
                         caption_entities=broadcast_message.caption_entities,
+                        parse_mode=None,
                     )
                 elif broadcast_message.voice:
                     await callback_query.bot.send_voice(
@@ -471,6 +478,7 @@ class BroadcastConfirmUsecase:
                         voice=broadcast_message.voice.file_id,
                         caption=broadcast_message.caption,
                         caption_entities=broadcast_message.caption_entities,
+                        parse_mode=None,
                     )
                 elif broadcast_message.sticker:
                     await callback_query.bot.send_sticker(
@@ -482,16 +490,11 @@ class BroadcastConfirmUsecase:
             except Exception as e:
                 # Логируем ошибку, но продолжаем рассылку
                 print(f"Ошибка отправки сообщения пользователю {user.id}: {e}")
-
-        # Отправляем отчет о рассылке
-        await callback_query.message.answer(
-            messages.BROADCAST_SUCCESS_MESSAGE.format(sent=sent_count, total=total_users)
-        )
         await state.clear()
 
 
 @dataclass
 class BroadcastCancelUsecase:
     async def __call__(self, callback_query: types.CallbackQuery, state: FSMContext) -> None:
-        await callback_query.message.answer(messages.BROADCAST_CANCELLED_MESSAGE)
+        await callback_query.message.answer(messages.BROADCAST_CANCELLED_MESSAGE, parse_mode=None)
         await state.clear()
