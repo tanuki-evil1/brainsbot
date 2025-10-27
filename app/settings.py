@@ -11,10 +11,6 @@ class Settings(BaseSettings):
     database_port: int
     database_name: str
 
-    server_host: str
-    server_user: str
-    server_password: str
-
     @property
     def database_url(self) -> str:
         return f"postgresql+asyncpg://{self.database_user}:{self.database_password}@{self.database_host}:{self.database_port}/{self.database_name}"

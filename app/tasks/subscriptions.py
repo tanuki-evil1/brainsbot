@@ -1,13 +1,15 @@
 import asyncio
 from dataclasses import replace
+
 from aiogram import Bot
-from app.adapters.postgresql.repositories import SubscriptionRepository, UserRepository
-from app.handlers.telegram.deps import get_database
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
-from app.adapters.wireguard.async_manager import AsyncWireGuardClientManager
 from vi_core.sqlalchemy import UnitOfWork
+
+from app.adapters.postgresql.repositories import SubscriptionRepository, UserRepository
+from app.adapters.protocols.factory import ProtocolFactory
+from app.handlers.telegram.deps import get_database
+from app.messages import SUBSCRIPTION_EXPIRED_MESSAGE, ButtonTexts, CallbackData, URLs
 from app.settings import settings
-from app.messages import SUBSCRIPTION_EXPIRED_MESSAGE, ButtonTexts, URLs, CallbackData
 
 
 async def monthly_check_loop(bot: Bot) -> None:
@@ -16,7 +18,8 @@ async def monthly_check_loop(bot: Bot) -> None:
         subscription_repository = SubscriptionRepository(session=session)
         user_repository = UserRepository(session=session)
         uow = UnitOfWork(session=session)
-        wireguard_manager = AsyncWireGuardClientManager(
+        protocol_factory = ProtocolFactory()
+        wireguard_manager = protocol_factory.create_manager(Protocol.WIREGUARD)
             host=settings.server_host,
             user=settings.server_user,
             password=settings.server_password,

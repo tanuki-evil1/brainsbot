@@ -1,21 +1,46 @@
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timedelta
+from enum import StrEnum
+from typing import Any
+from uuid import UUID
 
-AMOUNT = 250
-DISCOUNT = 10
+AMOUNT = 300
+DISCOUNT = 15
 
+class Protocol(StrEnum):
+    WIREGUARD = "wg"
+    XRAY = "xray"
+
+
+@dataclass
+class Server:
+    id: int
+    host: str
+    port: int
+    location: str
+    password: str
+    admin_username: str
+    additional_info: dict[str, Any]
 
 @dataclass
 class Subscription:
     user_id: int
-    key: str | None = None
-    public_key: str | None = None
-    is_notify: bool = False
-    is_active: bool = False
+    is_notify: bool = True
+    is_active: bool = True
     amount: int = AMOUNT
     id: int | None = None
-    end_date: datetime | None = None
-    allowed_ip: str | None = None
+    end_date: datetime | None = field(default_factory=lambda: datetime.now() + timedelta(days=1))
+
+    active_protocol: Protocol = Protocol.WIREGUARD
+    active_server_id: int = 1
+
+    wg_allowed_ip: str | None = None
+    wg_key: str | None = None
+    wg_public_key: str | None = None
+
+    xray_key: str | None = None
+    xray_uuid: UUID | None = None
+
     created_at: datetime = field(default_factory=datetime.now)
     updated_at: datetime = field(default_factory=datetime.now)
 
@@ -49,3 +74,12 @@ class WireGuardUserConfig:
     access_key: str
     allowed_ip: str
     username: str
+
+@dataclass
+class XrayUserConfig:
+    uuid: UUID
+    key: str
+    username: str
+
+
+

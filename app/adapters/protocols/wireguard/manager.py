@@ -1,4 +1,3 @@
-import asyncio
 import ipaddress
 import json
 from datetime import datetime
@@ -9,24 +8,25 @@ import asyncssh
 import wgconfig
 
 from app import entities
-from app.adapters.wireguard import templates
+from app.adapters.protocols.wireguard import templates
+from app.settings import settings
 
 
-class AsyncWireGuardClientManager:
+class WireGuardManager:
     """Асинхронный менеджер клиентов WireGuard"""
 
-    def __init__(self, host: str, user: str, password: str):
+    def __init__(self, host: str, user: str, password: str, server_public_key: str, preshared_key: str):
         self.host = host
         self.user = user
         self.password = password
-        self.server_public_key = "9tVJPFMkqDg5rCzpQO9BCW9mQTTF6bxuNP+7pz+EG28="
-        self.preshared_key = "oKq1Anglz/Ve4NeQL8Dghl7TcQPizyvegB6yc5vDjqA="
+        self.server_public_key = server_public_key
+        self.preshared_key = preshared_key
         self._connection: asyncssh.SSHClientConnection | None = None
 
         # Отключаем отладочные логи asyncssh
         asyncssh.set_log_level("WARNING")
 
-    async def __aenter__(self) -> "AsyncWireGuardClientManager":
+    async def __aenter__(self) -> "WireGuardManager":
         """Асинхронный контекстный менеджер - вход"""
         self._connection = await asyncssh.connect(
             host=self.host,
@@ -69,7 +69,7 @@ class AsyncWireGuardClientManager:
             # Handle bytes or other types
             return str(stdout).strip()
 
-    async def _find_available_ip(self, reserved_ips: list[str]) -> str:
+    async def _find_available_ip(self, reserved_ips: list[str] | None = None) -> str:
         """Находит свободный IP адрес из пула адресов"""
         # Получаем текущую конфигурацию WireGuard
         wg_config = await self._run_command("docker exec -i amnezia-awg cat /opt/amnezia/awg/wg0.conf")
@@ -85,9 +85,10 @@ class AsyncWireGuardClientManager:
                 used_ips.add(ipaddress.IPv4Address(ip_only))
 
         # Добавляем переданные забронированные IP адреса
-        for reserved_ip in reserved_ips:
-            ip_only = reserved_ip.split("/")[0]
-            used_ips.add(ipaddress.IPv4Address(ip_only))
+        if reserved_ips:
+            for reserved_ip in reserved_ips:
+                ip_only = reserved_ip.split("/")[0]
+                used_ips.add(ipaddress.IPv4Address(ip_only))
 
         # Используем стандартную сеть 10.8.1.0/24 для VPN
         network = ipaddress.IPv4Network("10.8.1.0/24")
@@ -102,7 +103,7 @@ class AsyncWireGuardClientManager:
         # Если не найден свободный IP, поднимаем исключение
         raise RuntimeError("Нет доступных IP адресов в сети")
 
-    async def create_config(self, username: str = "Anonym", ips: list[str] = []) -> entities.WireGuardUserConfig:
+    async def create_config(self, username: str, ips: list[str] | None = None, **kwargs) -> entities.WireGuardUserConfig:
         # Находим свободный IP адрес с учетом забронированных
         allowed_ip = await self._find_available_ip(ips)
 
@@ -184,12 +185,3 @@ class AsyncWireGuardClientManager:
         await self._run_command(f"echo '{updated_json}' | docker exec -i amnezia-awg tee /opt/amnezia/awg/clientsTable")
 
 
-async def main():
-    async with AsyncWireGuardClientManager(host="94.228.168.225", user="root", password="jiESCyLdYUX0") as manager:
-        # user_config = await manager.create_config(username="test", ips=["10.8.1.75/32"])
-        # await manager.add_user(user_config)
-        await manager.remove_user("Giwphk/FYcQQH2w4k86Gg9ykaulOQrLg/cTNbq+bfXA=")
-
-
-if __name__ == "__main__":
-    asyncio.run(main())

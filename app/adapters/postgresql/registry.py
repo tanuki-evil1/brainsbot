@@ -35,9 +35,13 @@ def subscription_to_entity(subscription: models.Subscription) -> entities.Subscr
         end_date=subscription.end_date,
         is_active=subscription.is_active,
         amount=subscription.amount,
-        key=subscription.key,
-        public_key=subscription.public_key,
-        allowed_ip=subscription.allowed_ip,
+        active_server_id=subscription.active_server_id,
+        active_protocol=subscription.active_protocol,
+        wg_key=subscription.wg_key,
+        wg_public_key=subscription.wg_public_key,
+        wg_allowed_ip=subscription.wg_allowed_ip,
+        xray_key=subscription.xray_key,
+        xray_uuid=subscription.xray_uuid,
     )
 
 
@@ -49,9 +53,13 @@ def subscription_to_model(subscription: entities.Subscription) -> models.Subscri
         end_date=subscription.end_date,
         amount=subscription.amount,
         is_active=subscription.is_active,
-        key=subscription.key,
-        public_key=subscription.public_key,
-        allowed_ip=subscription.allowed_ip,
+        active_server_id=subscription.active_server_id,
+        active_protocol=subscription.active_protocol,
+        wg_key=subscription.wg_key,
+        wg_public_key=subscription.wg_public_key,
+        wg_allowed_ip=subscription.wg_allowed_ip,
+        xray_key=subscription.xray_key,
+        xray_uuid=subscription.xray_uuid,
     )
 
 
@@ -76,9 +84,34 @@ def referral_to_model(referral: entities.Referral) -> models.Referral:
     )
 
 
+def server_to_entity(server: models.Server) -> entities.Server:
+    return entities.Server(
+        id=server.id,
+        host=server.host,
+        port=server.port,
+        location=server.location,
+        password=server.password,
+        admin_username=server.admin_username,
+        additional_info=server.additional_info,
+    )
+
+
+def server_to_model(server: entities.Server) -> models.Server:
+    return models.Server(
+        id=server.id,
+        host=server.host,
+        port=server.port,
+        admin_username=server.admin_username,
+        location=server.location,
+        password=server.password,
+        additional_info=server.additional_info,
+    )
+
 mapper.register(models.Referral, entities.Referral, referral_to_entity, True)
 mapper.register(entities.Referral, models.Referral, referral_to_model)
 mapper.register(models.User, entities.User, user_to_entity, True)
 mapper.register(entities.User, models.User, user_to_model)
 mapper.register(models.Subscription, entities.Subscription, subscription_to_entity, True)
 mapper.register(entities.Subscription, models.Subscription, subscription_to_model)
+mapper.register(models.Server, entities.Server, server_to_entity, True)
+mapper.register(entities.Server, models.Server, server_to_model)

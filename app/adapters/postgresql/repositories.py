@@ -1,6 +1,7 @@
 from datetime import datetime
 from typing import Any
-from sqlalchemy import select, func
+
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from vi_core.sqlalchemy import SessionHelper
@@ -55,12 +56,12 @@ class SubscriptionRepository:
     async def edit_one(self, subscription: entities.Subscription) -> None:
         await self.helper.update(mapper.map(subscription, models.Subscription))
 
-    async def find_all_ips(self) -> list[str]:
-        stmt = select(models.Subscription.allowed_ip).filter(
-            models.Subscription.allowed_ip.is_not(None),
+    async def find_all_wg_allowed_ips(self) -> list[str]:
+        stmt = select(models.Subscription.wg_allowed_ip).filter(
+            models.Subscription.wg_allowed_ip.is_not(None),
         )
         instances = await self.helper.all(stmt)
-        return [ip for ip in instances if ip is not None]
+        return [ip for ip in instances if ip]
 
 
 class ReferralRepository:
@@ -93,3 +94,18 @@ class ReferralRepository:
         )
         result = await self.session.scalar(stmt)
         return result or 0
+
+
+class ServerRepository:
+    def __init__(self, session: AsyncSession):
+        self.helper = SessionHelper[models.Server](session)
+
+    async def find_one(self, **kwargs: Any) -> entities.Server | None:
+        stmt = select(models.Server).filter_by(**kwargs)
+        instance = await self.helper.one(stmt)
+        return mapper.map(instance, entities.Server) if instance else None
+
+    async def find_all(self) -> list[entities.Server]:
+        stmt = select(models.Server)
+        instances = await self.helper.all(stmt)
+        return [mapper.map(instance, entities.Server) for instance in instances]

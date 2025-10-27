@@ -9,7 +9,8 @@ from aiogram.types import BotCommand
 
 from app.handlers.telegram import root
 from app.settings import settings
-from app.tasks.subscriptions import monthly_check_loop
+
+# from app.tasks.subscriptions import monthly_check_loop
 
 dp = Dispatcher()
 dp.include_router(root)
@@ -21,7 +22,7 @@ async def main() -> None:
         default=DefaultBotProperties(parse_mode=ParseMode.MARKDOWN_V2),
     )
     await bot.set_my_commands([BotCommand(command="start", description="Главное меню")])
-    asyncio.create_task(monthly_check_loop(bot))
+    # asyncio.create_task(monthly_check_loop(bot))
     await dp.start_polling(bot)
 
 
