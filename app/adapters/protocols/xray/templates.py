@@ -45,7 +45,7 @@ XRAY_CLIENT = """{{
     ]
 }}"""
 
-SHORT_XRAY_CLIENT = """vless://{user_uuid}@{server_ip_address}:{server_port}?encryption=none&flow=xtls-rprx-vision&type=tcp&security=reality&pbk={server_public_key}&sid={server_short_id}&fp=chrome&sni={server_name}#REALITY_Server"""
+SHORT_XRAY_CLIENT = """vless://{user_uuid}@{server_ip_address}:{server_port}?encryption=none&flow=xtls-rprx-vision&type=tcp&security=reality&pbk={server_public_key}&sid={server_short_id}&fp=chrome&sni={server_name}#Brains"""
 
 CLIENT_TEMPLATE = """
 {{
