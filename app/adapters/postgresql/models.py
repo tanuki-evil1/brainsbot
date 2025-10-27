@@ -20,7 +20,7 @@ class Subscription(Base, TimestampMixin):
     amount: Mapped[int] = mapped_column(Integer, nullable=False, default=AMOUNT)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
 
-    active_protocol: Mapped[Protocol] = mapped_column(String(255), nullable=False, default=Protocol.WIREGUARD)
+    active_protocol: Mapped[Protocol] = mapped_column(String(255), nullable=False, default=Protocol.XRAY)
     active_server_id: Mapped[int] = mapped_column(Integer, ForeignKey("servers.id"), nullable=False)
 
     wg_key: Mapped[str] = mapped_column(String(500), nullable=True, default=None)

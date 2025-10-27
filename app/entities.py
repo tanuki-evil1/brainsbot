@@ -31,7 +31,7 @@ class Subscription:
     id: int | None = None
     end_date: datetime | None = field(default_factory=lambda: datetime.now() + timedelta(days=1))
 
-    active_protocol: Protocol = Protocol.WIREGUARD
+    active_protocol: Protocol = Protocol.XRAY
     active_server_id: int = 1
 
     wg_allowed_ip: str | None = None
