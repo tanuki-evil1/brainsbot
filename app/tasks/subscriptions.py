@@ -3,6 +3,7 @@ from dataclasses import replace
 from typing import cast
 
 from aiogram import Bot
+from aiogram.exceptions import TelegramForbiddenError
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from vi_core.sqlalchemy import UnitOfWork
 
@@ -64,7 +65,12 @@ async def monthly_check_loop(bot: Bot) -> None:
                         ],
                     ]
                 )
-                await bot.send_message(user.id, SUBSCRIPTION_EXPIRED_MESSAGE, reply_markup=keyboard)
+                try:
+                    await bot.send_message(user.id, SUBSCRIPTION_EXPIRED_MESSAGE, reply_markup=keyboard)
+                except TelegramForbiddenError:
+                    # Пользователь заблокировал бота - пропускаем
+                    print(f"User {user.id} has blocked the bot")
+                    continue
 
             await uow.commit()
 
