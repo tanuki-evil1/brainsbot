@@ -40,7 +40,6 @@ class SubscriptionRepository:
     async def find_all_expired(self) -> list[entities.Subscription]:
         stmt = select(models.Subscription).filter(
             models.Subscription.end_date < datetime.now(),
-            models.Subscription.is_notify == True,
         )
         instances = await self.helper.all(stmt)
         return [mapper.map(instance, entities.Subscription) for instance in instances]
