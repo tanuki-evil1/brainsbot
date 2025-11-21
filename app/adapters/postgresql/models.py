@@ -1,13 +1,11 @@
-import uuid
 from datetime import datetime
-from typing import Any
 
-from sqlalchemy import UUID, BigInteger, Boolean, DateTime, ForeignKey, Integer, String
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy import BigInteger, Boolean, DateTime, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from vi_core.sqlalchemy.base_model import Base, TimestampMixin
 
-from app.entities import AMOUNT, Protocol
+from app.entities import AMOUNT
+from app.settings import settings
 
 
 class Subscription(Base, TimestampMixin):
@@ -19,20 +17,8 @@ class Subscription(Base, TimestampMixin):
     end_date: Mapped[datetime] = mapped_column(DateTime, nullable=True)
     amount: Mapped[int] = mapped_column(Integer, nullable=False, default=AMOUNT)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
-
-    active_protocol: Mapped[Protocol] = mapped_column(String(255), nullable=False, default=Protocol.XRAY)
-    active_server_id: Mapped[int] = mapped_column(Integer, ForeignKey("servers.id"), nullable=False)
-
-    wg_key: Mapped[str] = mapped_column(String(500), nullable=True, default=None)
-    wg_public_key: Mapped[str] = mapped_column(String(255), nullable=True, default=None)
-    wg_allowed_ip: Mapped[str] = mapped_column(String(255), nullable=True, default=None)
-
-    xray_key: Mapped[str] = mapped_column(String(500), nullable=True, default=None)
-    xray_uuid: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=True, default=None)
     # One-to-one связь
     user: Mapped["User"] = relationship("User", back_populates="subscription", uselist=False)
-
-    server: Mapped["Server"] = relationship("Server", back_populates="subscriptions", uselist=False)
 
 
 class User(Base, TimestampMixin):
@@ -69,16 +55,3 @@ class Referral(Base, TimestampMixin):
         "User", foreign_keys=[referrer_id], back_populates="referrals", uselist=False
     )
 
-
-class Server(Base, TimestampMixin):
-    __tablename__ = "servers"
-
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    host: Mapped[str] = mapped_column(String(255), nullable=True)
-    port: Mapped[int] = mapped_column(Integer, nullable=True)
-    location: Mapped[str] = mapped_column(String(255), nullable=True)
-    password: Mapped[str] = mapped_column(String(255), nullable=True)
-    admin_username: Mapped[str] = mapped_column(String(255), nullable=False)
-    additional_info: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=True, default=dict)
-
-    subscriptions: Mapped[list["Subscription"]] = relationship("Subscription", back_populates="server", uselist=True)

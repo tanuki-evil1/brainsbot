@@ -3,10 +3,11 @@ from aiogram.filters import Command, CommandStart, StateFilter
 from aiogram.fsm.context import FSMContext
 from vi_core.sqlalchemy import UnitOfWork
 
-from app import entities, messages
+from app import messages
 from app.adapters.postgresql import repositories
-from app.adapters.protocols.factory import ProtocolFactory
+from app.adapters.xui.client import XuiClient
 from app.handlers.telegram.deps import get_database
+from app.settings import settings
 from app.usecases import user
 
 router = Router()
@@ -20,16 +21,14 @@ async def command_start_handler(message: types.Message, state: FSMContext) -> No
         uow = UnitOfWork(session=session)
         subscription_repository = repositories.SubscriptionRepository(session=session)
         referral_repository = repositories.ReferralRepository(session=session)
-        server_repository = repositories.ServerRepository(session=session)
-        protocol_factory = ProtocolFactory()
+        xui_client = XuiClient(base_url=settings.xui_url_panel)
 
         start_user_usecase = user.StartUserUsecase(
             user_repository=user_repository,
             uow=uow,
             subscription_repository=subscription_repository,
             referral_repository=referral_repository,
-            server_repository=server_repository,
-            protocol_factory=protocol_factory,
+            xui_client=xui_client,
         )
         await start_user_usecase(message, state)
 
@@ -50,87 +49,10 @@ async def process_account_callback(callback_query: types.CallbackQuery) -> None:
     async with database.session() as session:
         user_repository = repositories.UserRepository(session=session)
         uow = UnitOfWork(session=session)
-        server_repository = repositories.ServerRepository(session=session)
 
         account_usecase = user.AccountUsecase(user_repository=user_repository,
-                                              server_repository=server_repository,
                                               uow=uow)
         await account_usecase(callback_query)
-
-@router.callback_query(lambda message: message.data == messages.CallbackData.SWAP_COUNTRY)
-async def process_swap_country_callback(callback_query: types.CallbackQuery) -> None:
-    database = get_database()
-    async with database.session() as session:
-        user_repository = repositories.UserRepository(session=session)
-        server_repository = repositories.ServerRepository(session=session)
-
-        swap_country_usecase = user.SwapCountryUsecase(
-            user_repository=user_repository,
-            server_repository=server_repository,
-        )
-        await swap_country_usecase(callback_query)
-
-
-@router.callback_query(lambda message: message.data == messages.CallbackData.SWAP_PROTOCOL)
-async def process_swap_protocol_callback(callback_query: types.CallbackQuery) -> None:
-    database = get_database()
-    async with database.session() as session:
-        user_repository = repositories.UserRepository(session=session)
-
-        swap_protocol_usecase = user.SwapProtocolUsecase(
-            user_repository=user_repository,
-        )
-        await swap_protocol_usecase(callback_query)
-
-
-@router.callback_query(lambda callback: callback.data and callback.data.startswith("country_"))
-async def process_confirm_swap_country_callback(callback_query: types.CallbackQuery) -> None:
-    # Извлекаем ID сервера из callback_data
-    if not callback_query.data:
-        return
-    server_id = int(callback_query.data.split("_")[1])
-
-    database = get_database()
-    async with database.session() as session:
-        user_repository = repositories.UserRepository(session=session)
-        subscription_repository = repositories.SubscriptionRepository(session=session)
-        server_repository = repositories.ServerRepository(session=session)
-        protocol_factory = ProtocolFactory()
-        uow = UnitOfWork(session=session)
-
-        confirm_swap_country_usecase = user.ConfirmSwapCountryUsecase(
-            user_repository=user_repository,
-            subscription_repository=subscription_repository,
-            server_repository=server_repository,
-            protocol_factory=protocol_factory,
-            uow=uow,
-        )
-        await confirm_swap_country_usecase(callback_query, server_id)
-
-
-@router.callback_query(lambda callback: callback.data and callback.data.startswith("protocol_"))
-async def process_confirm_swap_protocol_callback(callback_query: types.CallbackQuery) -> None:
-    # Извлекаем протокол из callback_data
-    if not callback_query.data:
-        return
-    protocol_value = entities.Protocol(callback_query.data.split("_")[1])
-
-    database = get_database()
-    async with database.session() as session:
-        user_repository = repositories.UserRepository(session=session)
-        subscription_repository = repositories.SubscriptionRepository(session=session)
-        server_repository = repositories.ServerRepository(session=session)
-        protocol_factory = ProtocolFactory()
-        uow = UnitOfWork(session=session)
-
-        confirm_swap_protocol_usecase = user.ConfirmSwapProtocolUsecase(
-            user_repository=user_repository,
-            subscription_repository=subscription_repository,
-            server_repository=server_repository,
-            protocol_factory=protocol_factory,
-            uow=uow,
-        )
-        await confirm_swap_protocol_usecase(callback_query, protocol_value)
 
 
 @router.callback_query(lambda message: message.data == messages.CallbackData.TEAM)
@@ -208,35 +130,6 @@ async def start_support(callback_query: types.CallbackQuery, state: FSMContext) 
     await support_usecase(callback_query, state)
 
 
-@router.callback_query(lambda message: message.data == messages.CallbackData.KEY)
-async def process_key_callback(callback_query: types.CallbackQuery) -> None:
-    database = get_database()
-    async with database.session() as session:
-        user_repository = repositories.UserRepository(session=session)
-
-        key_usecase = user.KeyUsecase(user_repository=user_repository)
-        await key_usecase(callback_query)
-
-
-@router.callback_query(lambda message: message.data == messages.CallbackData.REISSUE_KEY)
-async def process_reissue_key_callback(callback_query: types.CallbackQuery) -> None:
-    database = get_database()
-    async with database.session() as session:
-        user_repository = repositories.UserRepository(session=session)
-        subscription_repository = repositories.SubscriptionRepository(session=session)
-        server_repository = repositories.ServerRepository(session=session)
-        uow = UnitOfWork(session=session)
-        protocol_factory = ProtocolFactory()
-
-        reissue_key_usecase = user.ReissueKeyUsecase(
-            user_repository=user_repository,
-            subscription_repository=subscription_repository,
-            uow=uow,
-            protocol_factory=protocol_factory,
-            server_repository=server_repository,
-        )
-        await reissue_key_usecase(callback_query)
-
 
 @router.callback_query(lambda message: message.data == messages.CallbackData.SEND_CHECK)
 async def send_check(callback_query: types.CallbackQuery, state: FSMContext) -> None:
@@ -250,16 +143,14 @@ async def forward_check_to_admin(message: types.Message, state: FSMContext) -> N
     async with database.session() as session:
         user_repository = repositories.UserRepository(session=session)
         subscription_repository = repositories.SubscriptionRepository(session=session)
-        server_repository = repositories.ServerRepository(session=session)
+        xui_client = XuiClient(base_url=settings.xui_url_panel)
         uow = UnitOfWork(session=session)
-        protocol_factory = ProtocolFactory()
 
         send_check_usecase = user.SendMessageCheckUsecase(
             user_repository=user_repository,
             subscription_repository=subscription_repository,
             uow=uow,
-            server_repository=server_repository,
-            protocol_factory=protocol_factory,
+            xui_client=xui_client,
         )
         await send_check_usecase(message, state)
 
