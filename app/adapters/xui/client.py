@@ -60,10 +60,11 @@ class XuiClient:
         self,
         user_uuid: str,
         email: str,
+        days: int = 30,
     ):
         await self.login()
         url = f"/panel/api/inbounds/updateClient/{user_uuid}"
-        expiry_datetime = datetime.now() + timedelta(days=30)
+        expiry_datetime = datetime.now() + timedelta(days=days)
         expiry_time = int(expiry_datetime.timestamp() * 1000)
 
         client_settings = {

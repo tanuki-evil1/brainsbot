@@ -270,7 +270,8 @@ class SendMessageCheckUsecase:
         if not subscription:
             return
 
-        await self.xui_client.update_client(user_uuid=str(message.from_user.id), email=str(message.from_user.id))
+        days = DAYS_IN_MONTH + (subscription.end_date - datetime.now()).days
+        await self.xui_client.update_client(user_uuid=str(message.from_user.id), email=str(message.from_user.id), days=days)
         updated_subscription = replace(
             subscription,
             end_date=datetime.now() + timedelta(days=DAYS_IN_MONTH)
